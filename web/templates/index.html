@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <title>Mining Manager</title>
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link href="css/template.css" rel="stylesheet">
+
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js"></script>
+  <script src="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js"></script>
+  <script src="js/template.js"></script>
+  <script src="js/mining.js"></script>
+  <script src="js/init.js"></script>
+</head>
+
+<body class="fixed-nav sticky-footer bg-dark" id="page-top">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top" id="mainNav">
+    <a class="navbar-brand" href="#">Coin Magi Miner Manager</a>
+    <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#navbarResponsive"
+      aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarResponsive">
+      <ul class="navbar-nav navbar-sidenav" id="exampleAccordion">
+        <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Dashboard">
+          <a class="nav-link" href="#">
+            <i class="fa fa-fw fa-dashboard"></i>
+            <span class="nav-link-text">Dashboard</span>
+          </a>
+        </li>
+      </ul>
+      <ul class="navbar-nav sidenav-toggler">
+        <li class="nav-item">
+          <a class="nav-link text-center" id="sidenavToggler">
+            <i class="fa fa-fw fa-angle-left"></i>
+          </a>
+        </li>
+      </ul>
+      <ul class="navbar-nav ml-auto">
+        <li class="nav-item">
+          <a class="nav-link" data-toggle="modal" data-target="#exampleModal">
+            <i class="fa fa-fw fa-sign-out"></i>Logout</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  <div class="content-wrapper">
+    <div class="container-fluid">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+          <a href="#">Dashboard</a>
+        </li>
+      </ol>
+      <div class="row">
+        <div class="col-12">
+          <div id="card-template" class="card">
+            <div class="card-header"></div>
+            <div class="card-body" id="start">
+              <form action="/start" method="post" id="startMiner">
+                <div class="form-group">
+                  <label for="poolURL">Pool URL:</label>
+                  <input class="form-control" required=true type="text" name="poolURL" placeholder="stratum+tcp://pool_url:pool_port" />
+                </div>
+                <div class="form-group">
+                  <label for="username">Username:</label>
+                  <input class="form-control" required=true type="text" name="username" placeholder="pool_user.worker" />
+                </div>
+                <div class="form-group">
+                  <label for="password">Password:</label>
+                  <input class="form-control" required=true type="password" name="password" />
+                </div>
+                <div class="form-group">
+                  <label for="threads">Threads:</label>
+                  <input class="form-control" type="number" name="threads" value=2 />
+                </div>
+                <div class="form-group">
+                  <label for="cpuUsage">CPU Usage (in percentage):</label>
+                  <input class="form-control" type="number" name="cpuUsage" value=50 />
+                </div>
+                <button type="submit" class="btn btn-primary">Start Mining!</button>
+              </form>
+            </div>
+            <div class="card-body" id="running">
+              <div class="progress">
+                <div class="progress-bar bg-info progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="100" aria-valuemin="0"
+                  aria-valuemax="100" style="width:100%">
+                  Running...
+                </div>
+              </div>
+              <br/>
+              <form action="/stop" method="post" id="stopMiner">
+                <div class="form-group">
+                  <label for="poolURL">Pool URL:</label>
+                  <span id="poolURL"></span>
+                </div>
+                <div class="form-group">
+                  <label for="username">Username:</label>
+                  <span id="username"></span>
+                </div>
+                <div class="form-group">
+                  <label for="threads">Threads:</label>
+                  <span id="threads"></span>
+                </div>
+                <div class="form-group">
+                  <label for="cpuUsage">CPU Usage:</label>
+                  <span id="cpuUsage"></span>
+                </div>
+                <div class="form-group">
+                  <label for="cpuLoad">CPU Load:</label>
+                  <span id="cpuLoad"></span>
+                </div>
+                <div class="form-group">
+                  <button type="submit" class="btn btn-secondary">Stop</button>
+              </form>
+              </div>
+            </div>
+          </div>
+          <div id="card-container"></div>
+        </div>
+      </div>
+      <footer class="sticky-footer">
+        <div class="container">
+          <div class="text-center">
+            <small>Copyright © MagiMinerManager</small>
+          </div>
+        </div>
+      </footer>
+      <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fa fa-angle-up"></i>
+      </a>
+      <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
+              <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">×</span>
+              </button>
+            </div>
+            <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+              <a class="btn btn-primary" href="login.html">Logout</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+</body>
+
+</html>
