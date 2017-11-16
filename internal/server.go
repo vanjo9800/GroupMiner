@@ -52,9 +52,9 @@ func startMinerReq(w http.ResponseWriter, r *http.Request, id int) {
 	if id == 0 {
 		startMiner(miningParams)
 	} else {
-        fmt.Println("ID: ",id)
+		fmt.Println("ID: ", id)
 		tcpAddr, err := net.ResolveTCPAddr("tcp", clients[id].IP.String()+":"+strconv.Itoa(clients[id].ListenPort))
-        checkErr(err)
+		checkErr(err)
 		clientConn, err := net.DialTCP("tcp", nil, tcpAddr)
 		for i := 0; i < 5 && err != nil; i++ {
 			fmt.Println("Unable to connect to client. Trying again...")
@@ -65,10 +65,10 @@ func startMinerReq(w http.ResponseWriter, r *http.Request, id int) {
 			jsonMessage, err := json.Marshal(miningParams)
 			checkErr(err)
 			clientConn.Write(jsonMessage)
-            clientConn.Close()
+			clientConn.Close()
 		} else {
 			fmt.Println("Disconnected")
-            clients = append(clients[:id],clients[id+1:]...)
+			clients = append(clients[:id], clients[id+1:]...)
 		}
 	}
 }
@@ -79,7 +79,7 @@ func stopMinerReq(w http.ResponseWriter, r *http.Request, id int) {
 		stopMiner()
 	} else {
 		tcpAddr, err := net.ResolveTCPAddr("tcp", clients[id].IP.String()+":"+strconv.Itoa(clients[id].ListenPort))
-        checkErr(err)
+		checkErr(err)
 		clientConn, err := net.DialTCP("tcp", nil, tcpAddr)
 		for i := 0; i < 5 && err != nil; i++ {
 			fmt.Println("Unable to connect to client. Trying again...")
@@ -90,10 +90,10 @@ func stopMinerReq(w http.ResponseWriter, r *http.Request, id int) {
 			jsonMessage, err := json.Marshal(mining{PoolURL: "stop"})
 			checkErr(err)
 			clientConn.Write(jsonMessage)
-            clientConn.Close()
+			clientConn.Close()
 		} else {
 			fmt.Println("Disconnected")
-            clients = append(clients[:id],clients[id+1:]...)
+			clients = append(clients[:id], clients[id+1:]...)
 		}
 	}
 }
@@ -109,7 +109,7 @@ func sendStatus() {
 			states = append(states, client{Name: miner.Name, IP: miner.IP, State: currentState})
 		} else {
 			overallState := make(chan miningState)
-            success := make(chan bool)
+			success := make(chan bool)
 			go func() {
 				tcpAddr, err := net.ResolveTCPAddr("tcp", miner.IP.String()+":"+strconv.Itoa(miner.ListenPort))
 				checkErr(err)
@@ -127,26 +127,24 @@ func sendStatus() {
 					data := json.NewDecoder(clientConn)
 					err = data.Decode(&deviceState)
 					checkErr(err)
-                    success <- true
+					success <- true
 					overallState <- deviceState
-                    clientConn.Close()
+					clientConn.Close()
 				} else {
 					fmt.Println("Disconnected")
-                    clients = append(clients[:id],clients[id+1:]...)
-                    success <- false
+					clients = append(clients[:id], clients[id+1:]...)
+					success <- false
 				}
 			}()
-            if <-success {
-			    states = append(states, client{Name: miner.Name, IP: miner.IP, State: <-overallState})
-            }
+			if <-success {
+				states = append(states, client{Name: miner.Name, IP: miner.IP, State: <-overallState})
+			}
 		}
 	}
-	jsonStates, err := json.Marshal(states)
-	checkErr(err)
 	for webClient := range webClients {
-		err := webClient.WriteJSON(string(jsonStates))
+		err := webClient.WriteJSON(states)
 		if err != nil {
-            fmt.Println("Deleted client")
+			fmt.Println("Deleted client")
 			webClient.Close()
 			delete(webClients, webClient)
 		}
@@ -194,15 +192,24 @@ func clientListener() {
 		err = data.Decode(&newClient)
 		checkErr(err)
 		mutex.Lock()
-		clients = append(clients, client{Name: newClient.Name, ListenPort: newClient.ListenPort, IP: net.ParseIP(strings.Split(conn.RemoteAddr().String(), ":")[0])})
+		remoteIP := net.ParseIP(strings.Split(conn.RemoteAddr().String(), ":")[0])
+		inside := false
+		for _, existingClient := range clients {
+			if existingClient.Name == newClient.Name && existingClient.IP.String() == remoteIP.String() {
+				inside = true
+			}
+		}
+		if !inside {
+			fmt.Println("Added", newClient, err)
+			clients = append(clients, client{Name: newClient.Name, ListenPort: newClient.ListenPort, IP: remoteIP})
+		}
 		mutex.Unlock()
-		fmt.Println(newClient, err)
 	}
 }
 
-func handleWebsockets(w http.ResponseWriter, r *http.Request){
+func handleWebsockets(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
-    checkErr(err)
+	checkErr(err)
 	//defer ws.Close()
 	webClients[ws] = true
 }
@@ -216,7 +223,7 @@ func main() {
 	http.Handle("/css/", http.FileServer(http.Dir("web/static/")))
 	http.HandleFunc("/ws", handleWebsockets)
 
-	go func(){
+	go func() {
 		for {
 			sendStatus()
 			time.Sleep(time.Second)

@@ -29,16 +29,14 @@ func readConf() (conf client) {
 func connectToServer(conf client) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", conf.Server+":"+strconv.Itoa(conf.ServerPort))
 	serverConn, err := net.DialTCP("tcp", nil, tcpAddr)
-	defer serverConn.Close()
-	for err != nil {
-		fmt.Println("Unable to connect to server " + tcpAddr.String() + ". Trying again...")
-		serverConn, err = net.DialTCP("tcp", nil, tcpAddr)
+	if err == nil {
+		defer serverConn.Close()
+		jsonMessage, err := json.Marshal(clientInit{Name: conf.Name, ListenPort: conf.ListenPort})
 		checkErr(err)
-		time.Sleep(time.Second)
+		serverConn.Write(jsonMessage)
+	} else {
+		fmt.Println("Unable to connect to server " + tcpAddr.String() + ". Trying again...")
 	}
-	jsonMessage, err := json.Marshal(clientInit{Name: conf.Name, ListenPort: conf.ListenPort})
-	checkErr(err)
-	serverConn.Write(jsonMessage)
 }
 
 func startListener(conf client) {
@@ -69,6 +67,11 @@ func startListener(conf client) {
 
 func main() {
 	currentConfig := readConf()
-	connectToServer(currentConfig)
+	go func() {
+		for {
+			connectToServer(currentConfig)
+			time.Sleep(time.Second)
+		}
+	}()
 	startListener(currentConfig)
 }
