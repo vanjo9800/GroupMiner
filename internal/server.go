@@ -52,7 +52,6 @@ func startMinerReq(w http.ResponseWriter, r *http.Request, id int) {
 	if id == 0 {
 		startMiner(miningParams)
 	} else {
-		fmt.Println("ID: ", id)
 		tcpAddr, err := net.ResolveTCPAddr("tcp", clients[id].IP.String()+":"+strconv.Itoa(clients[id].ListenPort))
 		checkErr(err)
 		clientConn, err := net.DialTCP("tcp", nil, tcpAddr)
@@ -200,7 +199,7 @@ func clientListener() {
 			}
 		}
 		if !inside {
-			fmt.Println("Added", newClient, err)
+			fmt.Println("Added client " + newClient.Name + " at " + remoteIP.String() + ":" + strconv.Itoa(newClient.ListenPort))
 			clients = append(clients, client{Name: newClient.Name, ListenPort: newClient.ListenPort, IP: remoteIP})
 		}
 		mutex.Unlock()
