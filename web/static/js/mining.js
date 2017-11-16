@@ -1,64 +1,63 @@
-$(document).ready(function () {
-    $('#minerStart').submit(function (e) {
-        e.preventDefault();
-        $.ajax({
-            url: '/start',
-            type: 'post',
-            data: $('#minerStart').serialize(),
-            success: function () {
-            }
-        });
-    });
-    $('#minerStop').submit(function (e) {
-        e.preventDefault();
-        $.ajax({
-            url: '/stop',
-            type: 'post',
-            data: $('#minerStop').serialize(),
-            success: function () {
-            }
-        });
-    });
-});
+function checkFieldUpdate(field,newText){
+    if($(field).text()!=newText){
+        $(field).text(newText);
+    }
+}
+
 function updateInfo(data) {
     data = JSON.parse(data);
-        $("#card-container").empty();
+    data = JSON.parse(data);
     for (var i = 0; i < data.length; i++) {
-        var device = $("#card-template").clone();
-        $(device).attr('id',"")
-        $(device).show();
-        $("#card-container").append(device);
-        $(device).find(".card-header").text(data[i].Name);
-        $(device).find("#start").attr('id', 'start' + i);
-        $(device).find("#running").attr('id', 'running' + i);
-        $(device).find("#startMiner").attr('id', 'startMiner' + i);
-        $(device).find("#stopMiner").attr('id', 'stopMiner' + i);
-        $(device).find("#poolURL").attr('id',"poolURL"+i)
-        $(device).find("#username").attr('id',"username"+i)
-        $(device).find("#password").attr('id',"password"+i)
-        $(device).find("#threads").attr('id',"threads"+i)
-        $(device).find("#cpuUsage").attr('id',"cpuUsage"+i)
-        $(device).find("#cpuLoad").attr('id',"cpuLoad"+i)
+        console.log(data[i],data.length)
+        var device = $('[data="'+data[i].IP+'"]');
+        if (!device.length) {
+            device = $("#card-template").clone();
+            $(device).attr('id',"")
+            $(device).show();
+            $("#card-container").append(device);
+            $(device).attr("data",data[i].IP)
+            $(device).find(".card-header").text(data[i].Name);
+            $(device).find(".startMiner").submit(function (i,device) {
+                $(device).find(".startMiner").preventDefault();
+                $.ajax({
+                    url: '/start/'+i,
+                    type: 'post',
+                    data: $(device).find('.startMiner').serialize(),
+                    success: function () {
+                    }
+                });
+            }(i,device);
+            $(device).find('.stopMiner').submit(function (i,device) {
+                $(device).find(".stopMiner").preventDefault();
+                $.ajax({
+                    url: '/stop/'+i,
+                    type: 'post',
+                    data: $(device).find('.stopMiner').serialize(),
+                    success: function () {
+                    }
+                });
+            }(i,device);
+        }
         mining = data[i].State.MiningParams
         system = data[i].State.SystemParams
         if (system.CurrentState == false) {
-            $("#start" + i).show();
-            $("#running" + i).hide();
+            $(device).find(".start").show();
+            $(device).find(".running").hide();
         } else {
-            $("#start" + i).hide();
-            $("#running" + i).show();
-            $("#poolURL" + i).text(mining.PoolURL);
-            $("#username" + i).text(mining.Username);
-            $("#threads" + i).text(mining.Threads);
-            $("#cpuUsage" + i).text(mining.CPUUse);
-            $("#cpuLoad" + i).text(system.SystemCPU);
+            $(device).find(".start").hide();
+            $(device).find(".running").show();
+            checkFieldUpdate($(device).find(".poolURL"),mining.PoolURL);
+            checkFieldUpdate($(device).find(".username"),mining.Username);
+            checkFieldUpdate($(device).find(".threads"),mining.Threads);
+            checkFieldUpdate($(device).find(".cpuUsage"),mining.CPUUse);
+            checkFieldUpdate($(device).find(".cpuLoad"),system.SystemCPU);
             if (system.SystemCPU < 50.0) {
-                $("#cpuLoad" + i).css("color", "green");
+                $(device).find(".cpuLoad").css("color", "green");
             } else {
                 if (system.SystemCPU < 85.0) {
-                    $("#cpuLoad" + i).css("color", "orange");
+                    $(device).find(".cpuLoad").css("color", "orange");
                 } else {
-                    $("#cpuLoad" + i).css("color", "red");
+                    $(device).find(".cpuLoad").css("color", "red");
                 }
             }
         }
