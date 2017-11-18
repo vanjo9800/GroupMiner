@@ -16,7 +16,11 @@ function updateInfo(data) {
             $(device).show();
             $("#card-container").append(device);
             $(device).attr("data", data[i].IP)
-            $(device).find(".card-header").text(data[i].Name);
+            $(device).find(".card-header").find("span").text(data[i].Name);
+            if(data[i].Type=="rpi"){
+                $(device).find(".card-header").find("img").attr("src","images/rpi.png")
+                $(device).find(".card-header").find("img").css("width","11.6%")
+            }
             var startForm = $(device).find(".startMiner")
             $(startForm).attr("action", "/start/" + i)
             $(startForm).submit(function (e) {

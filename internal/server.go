@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"regexp"
@@ -15,11 +17,16 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type client struct {
-	Name       string
-	IP         net.IP
-	ListenPort int
-	State      miningState
+type serverConfig struct {
+	WebPort    int
+	ClientPort int
+}
+
+func readConf() (conf serverConfig) {
+	configFile, err := ioutil.ReadFile("config/server.conf")
+	checkErr(err)
+	configs := bytes.Split(configFile, []byte("\n"))
+	return serverConfig{WebPort: converter(strings.Split(string(configs[1]), "=")[1]), ClientPort: converter(strings.Split(string(configs[2]), "=")[1])}
 }
 
 var webClients = make(map[*websocket.Conn]bool)
@@ -56,7 +63,7 @@ func startMinerReq(w http.ResponseWriter, r *http.Request, id int) {
 		checkErr(err)
 		clientConn, err := net.DialTCP("tcp", nil, tcpAddr)
 		for i := 0; i < 5 && err != nil; i++ {
-			fmt.Println("Unable to connect to client. Trying again...")
+			fmt.Println("Unable to connect to client " + clients[id].Name + ". Trying again...")
 			clientConn, err = net.DialTCP("tcp", nil, tcpAddr)
 			time.Sleep(time.Second)
 		}
@@ -66,7 +73,7 @@ func startMinerReq(w http.ResponseWriter, r *http.Request, id int) {
 			clientConn.Write(jsonMessage)
 			clientConn.Close()
 		} else {
-			fmt.Println("Disconnected")
+			fmt.Println("Disconnected client " + clients[id].Name + " from " + clients[id].IP.String())
 			clients = append(clients[:id], clients[id+1:]...)
 		}
 	}
@@ -81,7 +88,7 @@ func stopMinerReq(w http.ResponseWriter, r *http.Request, id int) {
 		checkErr(err)
 		clientConn, err := net.DialTCP("tcp", nil, tcpAddr)
 		for i := 0; i < 5 && err != nil; i++ {
-			fmt.Println("Unable to connect to client. Trying again...")
+			fmt.Println("Unable to connect to client " + clients[id].Name + ". Trying again...")
 			clientConn, err = net.DialTCP("tcp", nil, tcpAddr)
 			time.Sleep(time.Second)
 		}
@@ -91,7 +98,7 @@ func stopMinerReq(w http.ResponseWriter, r *http.Request, id int) {
 			clientConn.Write(jsonMessage)
 			clientConn.Close()
 		} else {
-			fmt.Println("Disconnected")
+			fmt.Println("Disconnected client " + clients[id].Name + " from " + clients[id].IP.String())
 			clients = append(clients[:id], clients[id+1:]...)
 		}
 	}
@@ -114,7 +121,7 @@ func sendStatus() {
 				checkErr(err)
 				clientConn, err := net.DialTCP("tcp", nil, tcpAddr)
 				for i := 0; i < 5 && err != nil; i++ {
-					fmt.Println("Unable to connect to client. Trying again...")
+					fmt.Println("Unable to connect to client " + clients[id].Name + ". Trying again...")
 					clientConn, err = net.DialTCP("tcp", nil, tcpAddr)
 					time.Sleep(time.Second)
 				}
@@ -130,20 +137,19 @@ func sendStatus() {
 					overallState <- deviceState
 					clientConn.Close()
 				} else {
-					fmt.Println("Disconnected")
+					fmt.Println("Disconnected client " + clients[id].Name + " from " + clients[id].IP.String())
 					clients = append(clients[:id], clients[id+1:]...)
 					success <- false
 				}
 			}()
 			if <-success {
-				states = append(states, client{Name: miner.Name, IP: miner.IP, State: <-overallState})
+				states = append(states, client{Name: miner.Name, Type: miner.Type, IP: miner.IP, State: <-overallState})
 			}
 		}
 	}
 	for webClient := range webClients {
 		err := webClient.WriteJSON(states)
 		if err != nil {
-			fmt.Println("Deleted client")
 			webClient.Close()
 			delete(webClients, webClient)
 		}
@@ -179,15 +185,15 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 var clients []client
 var mutex sync.Mutex
 
-func clientListener() {
-	l, err := net.Listen("tcp", ":2000")
+func clientListener(conf serverConfig) {
+	l, err := net.Listen("tcp", ":"+strconv.Itoa(conf.ClientPort))
 	checkErr(err)
 	defer l.Close()
 	for {
 		conn, err := l.Accept()
 		checkErr(err)
 		data := json.NewDecoder(conn)
-		var newClient clientInit
+		var newClient client
 		err = data.Decode(&newClient)
 		checkErr(err)
 		mutex.Lock()
@@ -200,7 +206,7 @@ func clientListener() {
 		}
 		if !inside {
 			fmt.Println("Added client " + newClient.Name + " at " + remoteIP.String() + ":" + strconv.Itoa(newClient.ListenPort))
-			clients = append(clients, client{Name: newClient.Name, ListenPort: newClient.ListenPort, IP: remoteIP})
+			clients = append(clients, client{Name: newClient.Name, Type: newClient.Type, ListenPort: newClient.ListenPort, IP: remoteIP})
 		}
 		mutex.Unlock()
 	}
@@ -214,12 +220,15 @@ func handleWebsockets(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	currentConfig := readConf()
+	fmt.Println("Starter GroupMiner server on http://localhost:" + strconv.Itoa(currentConfig.WebPort) + "/")
 	clients = append(clients, client{Name: "Current device", IP: net.ParseIP("127.0.0.1")})
 	http.HandleFunc("/", makeHandler(indexHandler))
 	http.HandleFunc("/start/", makeReqHandler(startMinerReq))
 	http.HandleFunc("/stop/", makeReqHandler(stopMinerReq))
 	http.Handle("/js/", http.FileServer(http.Dir("web/static/")))
 	http.Handle("/css/", http.FileServer(http.Dir("web/static/")))
+	http.Handle("/images/", http.FileServer(http.Dir("web/static/")))
 	http.HandleFunc("/ws", handleWebsockets)
 
 	go func() {
@@ -228,6 +237,6 @@ func main() {
 			time.Sleep(time.Second)
 		}
 	}()
-	go clientListener()
-	http.ListenAndServe(":8081", nil)
+	go clientListener(currentConfig)
+	http.ListenAndServe(":"+strconv.Itoa(currentConfig.WebPort), nil)
 }

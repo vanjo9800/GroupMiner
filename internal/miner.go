@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"strconv"
@@ -36,9 +37,12 @@ type miningState struct {
 	SystemParams system
 }
 
-type clientInit struct {
+type client struct {
 	Name       string
+	Type       string
+	IP         net.IP
 	ListenPort int
+	State      miningState
 }
 
 func checkErr(err error) {
